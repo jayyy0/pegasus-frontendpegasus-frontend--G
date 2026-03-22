@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2019
     
     steps:
     - uses: actions/checkout@v4
@@ -24,6 +24,7 @@ jobs:
         target: 'desktop'
         arch: 'win64_msvc2019_64'
         modules: 'qtcharts qtmultimedia qtsvg'
+        setup-python: 'false'
     
     - name: Setup MSVC
       uses: microsoft/setup-msbuild@v2
@@ -55,7 +56,7 @@ jobs:
         path: build/Pegasus-frontend-Windows.zip
 
   build-android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     
     steps:
     - uses: actions/checkout@v4
@@ -67,10 +68,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y openjdk-11-jdk
     
-    - name: Install Android SDK
-      uses: android-actions/setup-android@v3
-    
-    - name: Install Qt for Android
+    - name: Install Qt
       uses: jurplel/install-qt-action@v3
       with:
         version: '5.15.2'
@@ -78,6 +76,10 @@ jobs:
         target: 'android'
         arch: 'android_arm64_v8a'
         modules: 'qtcharts qtmultimedia qtsvg'
+        setup-python: 'false'
+    
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
     
     - name: Install Android NDK
       run: |
@@ -111,62 +113,3 @@ jobs:
       with:
         name: Pegasus-Android
         path: build/Pegasus-frontend-Android.apk
-
-  build-android-qt6:
-    runs-on: ubuntu-latest
-    name: Build Android (Qt6)
-    
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y openjdk-17-jdk
-    
-    - name: Install Android SDK
-      uses: android-actions/setup-android@v3
-    
-    - name: Install Qt6 for Android
-      uses: jurplel/install-qt-action@v3
-      with:
-        version: '6.5.3'
-        host: 'linux'
-        target: 'android'
-        arch: 'android_arm64_v8a'
-        modules: 'qtcharts qtmultimedia qtsvg'
-    
-    - name: Install Android NDK
-      run: |
-        sdkmanager "ndk;25.2.9519653"
-    
-    - name: Build with Qt6
-      run: |
-        export ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/25.2.9519653
-        mkdir build-qt6
-        cd build-qt6
-        qmake6 .. \
-          -spec android-clang \
-          CONFIG+=release \
-          ANDROID_ABIS=arm64-v8a
-        make -j$(nproc)
-        make install INSTALL_ROOT=android_build
-    
-    - name: Package APK (Qt6)
-      run: |
-        cd build-qt6
-        androiddeployqt \
-          --input android_deployment_settings.json \
-          --output android_build \
-          --android-platform android-33 \
-          --gradle \
-          --release
-        cp android_build/build/outputs/apk/release/android_build-release-unsigned.apk Pegasus-frontend-Android-Qt6.apk
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: Pegasus-Android-Qt6
-        path: build-qt6/Pegasus-frontend-Android-Qt6.apk
